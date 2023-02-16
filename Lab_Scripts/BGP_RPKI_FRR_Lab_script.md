@@ -1,21 +1,14 @@
-# Laboratorio de RPKI (Utilizando un validador FORT y FRR como software router)
+# BGP and Secure Routing Lab
 
 ------
 
-***Creado por:***
-
-***Santiago Aggio***,
-***Nicolas Antoniello*** (*GitHub: 65007*),
-***Guillermo Cicileo,***
-***Erika Vega***
-
-> (2022-10-03)
+> (2023-02-01)
 
 ------
 
 
 
-## Arquitectura de red del laboratorio
+## Lab Architecture
 
 ![grpX-routing-network-globalRPKI-map](./BGP_RPKI_FRR_Lab_script-pics/grpX-routing-network-globalRPKI-map.png)
 
@@ -24,7 +17,7 @@
 > This Lab assumes you have access to the Lab platform
 
 ```
-     EQUIPO          DIRECCION IPv4            DIRECCION IPv6
+     DEVICE            IPv4 ADDR                 IPv6 ADDR
 
 +--------------+-----------------------+-----------------------------+
 | grpX-cli     | 100.100.X.2 (eth0)    | fddf:b98d:X::2 (eth0)        |
@@ -43,205 +36,26 @@
 +--------------+-----------------------+-----------------------------+
 ```
 
-Donde en esta práctica **solamente** vamos a acceder a los siguientes equipos:
+Note that in this practice we are **only** going to have access the following devices:
 
-* **grpX-cli** : cliente
-* **grpX-rtr** : router (de borde) correspondiente a las redes del equipo X
-
-
-
-Los siguientes equipos también serán utilizados durante la práctica, sin embargo los grupos no tendrán acceso a los mismos, siendo estos configurados por los tutores encargados del laboratorio:
-
-* **rpki1** : validador RPKI (FORT)
-* **rpki2** : validador RPKI (FORT)
-* **iborder-rtr** : router de borde para todo el laboratorio
+* **grpX-cli** : client
+* **grpX-rtr** : border router corresponding to group X networks
 
 
 
-## Verificando la configuración del validador RPKI FORT (*rpki1* y *rpki2*)
+The following equipment will also be used during the practice, however the groups will not have access to them, these being configured by the tutors in charge of the laboratory:
 
-Uno de los tutores del Laboratorio mostrará la configuración del validador FORT (contenido del archivo ***/etc/fort/config.json*** en el servidor **rpki1** o **rpki2**):
-
-```
-root@rpki1:~# more /etc/fort/config.json 
-
-{
-	"tal": "/var/fort/tal",
-	"local-repository": "/var/fort/repository",
-	"rsync-strategy": "root",
-	"shuffle-uris": true,
-	"mode": "server",
-
-	"server": {
-		"port": "323",
-		"backlog": 100,
-		"interval": {
-	            "validation": 900,
-	            "refresh": 900,
-	            "retry": 600,
-	            "expire": 7200
-	        }
-	},
-
-	"log": {
-		"color-output": true,
-		"file-name-format": "file-name"
-	},
-
-	"rsync": {
-		"program": "rsync",
-		"arguments-recursive": [
-			"--recursive",
-			"--times",
-			"$REMOTE",
-			"$LOCAL"
-		],
-		"arguments-flat": [
-			"--times",
-			"--dirs",
-			"$REMOTE",
-			"$LOCAL"
-		]
-	},
-
-	"incidences": [
-		{
-			"name": "incid-hashalg-has-params",
-			"action": "ignore"
-		}
-	],
-
-	"output": {
-		"roa": "/var/fort/fort_roas.csv"
-	}
-}
-
-```
+* **rpki1** : RPKI validator (FORT)
+* **rpki2** : RPKI validator (FORT)
+* **iborder-rtr** : Lab border router
 
 
 
-Los archivos correspondientes a los TAL de cada uno de los 5 RIRs se encuentran en el directorio ***/var/fort/tal/***:
+# BGP
 
-```
-root@rpki1:~# ls -larth /var/fort/tal/
+## Verifying the border router configuration ***iborder-rtr***
 
-total 6.0K
-drwxr-xr-x 4 root root   5 Sep 24 00:36 ..
--rw-r--r-- 1 root root 496 Sep 20 15:10 afrinic.tal
--rw-r--r-- 1 root root 466 Sep 20 15:10 apnic.tal
--rw-r--r-- 1 root root 487 Sep 20 15:10 arin.tal
--rw-r--r-- 1 root root 502 Sep 20 15:10 lacnic.tal
--rw-r--r-- 1 root root 482 Sep 20 15:10 ripe-ncc.tal
-drwxr-xr-x 2 root root   7 Sep 20 15:10 .
-```
-
-
-
-Ahora actualizaremos los archivos con los TALs descargándolos nuevamente de los 5 RIRs, utilizando el siguiente comando:
-
-```
-root@rpki1:~# fort --init-tals --tal /var/fort/tal
-```
-
-```
-Sep 27 18:11:44 DBG: HTTP GET: https://rpki.afrinic.net/tal/afrinic.tal
-Successfully fetched '/var/fort/tal/afrinic.tal'!
-
-Sep 27 18:11:45 DBG: HTTP GET: https://tal.apnic.net/apnic.tal
-Successfully fetched '/var/fort/tal/apnic.tal'!
-
-Attention: ARIN requires you to agree to their Relying Party Agreement (RPA) before you can download and use their TAL.
-Please download and read https://www.arin.net/resources/manage/rpki/rpa.pdf
-If you agree to the terms, type 'yes' and hit Enter: Sep 27 18:11:47 DBG: HTTP GET: https://www.arin.net/resources/manage/rpki/arin.tal
-Successfully fetched '/var/fort/tal/arin.tal'!
-
-Sep 27 18:11:47 DBG: HTTP GET: https://www.lacnic.net/innovaportal/file/4983/1/lacnic.tal
-Successfully fetched '/var/fort/tal/lacnic.tal'!
-
-Sep 27 18:11:48 DBG: HTTP GET: https://tal.rpki.ripe.net/ripe-ncc.tal
-Successfully fetched '/var/fort/tal/ripe-ncc.tal'!
-```
-
-
-
-Confirmamos (observando la fecha) que efectivamente disponemos de la versión actual de los TAL (en el directorio ***/var/fort/tal/***):
-
-```
-root@rpki1:~# ls -larth /var/fort/tal/
-
-total 6.0K
-drwxr-xr-x 4 root root   5 Sep 24 00:36 ..
--rw-r--r-- 1 root root 496 Sep 27 18:11 afrinic.tal
--rw-r--r-- 1 root root 466 Sep 27 18:11 apnic.tal
--rw-r--r-- 1 root root 487 Sep 27 18:11 arin.tal
--rw-r--r-- 1 root root 502 Sep 27 18:11 lacnic.tal
--rw-r--r-- 1 root root 482 Sep 27 18:11 ripe-ncc.tal
-drwxr-xr-x 2 root root   7 Sep 27 18:11 .
-```
-
-
-
-Y reiniciamos el proceso del validador FORT (recordar que el validador fue instalado y ejecutado como demonio del sistema):
-
-```
-root@rpki1:~# systemctl restart fortd
-```
-
-```
-root@rpki1:~# systemctl status fortd
-
-● fortd.service - FORT service (fort) - FORT RPKI validator
-     Loaded: loaded (/lib/systemd/system/fortd.service; enabled; vendor preset: enabled)
-    Drop-In: /run/systemd/system/service.d
-             └─zzz-lxc-service.conf
-     Active: active (running) since Mon 2021-09-27 18:15:10 UTC; 7s ago
-   Main PID: 1956 (fort)
-      Tasks: 37 (limit: 19204)
-     Memory: 13.2M
-     CGroup: /system.slice/fortd.service
-             └─1956 /usr/local/bin/fort --configuration-file=/etc/fort/config.json
-
-Sep 27 18:15:10 rpki1.lac.te-labs.training systemd[1]: Started FORT service (fort) - FORT RPKI validator.
-Sep 27 18:15:10 rpki1.lac.te-labs.training fort[1956]: INF: Disabling validation logging on syslog.
-Sep 27 18:15:10 rpki1.lac.te-labs.training fort[1956]: INF: Disabling validation logging on standard streams.
-Sep 27 18:15:10 rpki1.lac.te-labs.training fort[1956]: INF: Console log output configured; disabling operation logging on syslog.
-Sep 27 18:15:10 rpki1.lac.te-labs.training fort[1956]: INF: (Operation Logs will be sent to the standard streams only.)
-```
-
-
-
-Visualizando el log del demonio **fortd** (***/var/log/fortd.log***) vemos que inició el primer ciclo de validación (luego del reinicio), por lo que deberemos esperar a que este primer ciclo finalize para poder utilizar el validador:
-
-```
-root@rpki1:~# tail -f /var/log/fortd.log
-
-/usr/local/bin/fort(+0x3577a)[0x55c4aa92077a]
-/usr/local/bin/fort(+0x362a1)[0x55c4aa9212a1]
-/usr/local/bin/fort(+0x45fbc)[0x55c4aa930fbc]
-/lib/x86_64-linux-gnu/libpthread.so.0(+0x9609)[0x7fc904e47609]
-/lib/x86_64-linux-gnu/libc.so.6(clone+0x43)[0x7fc904d6e293]
-Sep 27 18:15:10 INF: Disabling validation logging on syslog.
-Sep 27 18:15:10 INF: Disabling validation logging on standard streams.
-Sep 27 18:15:10 INF: Console log output configured; disabling operation logging on syslog.
-Sep 27 18:15:10 INF: (Operation Logs will be sent to the standard streams only.)
-Sep 27 18:15:10 WRN: First validation cycle has begun, wait until the next notification to connect your router(s)
-```
-
-
-
-Una vez que el ciclo finalice, el siguiente mensaje aparecerá en el log (***/var/log/fortd.log***):
-
-```
-Sep 27 18:18:13 WRN: First validation cycle successfully ended, now you can connect your router(s)
-```
-
-> Notar que le lleva algunos minutos al validador el poder completar el primer ciclo de validación
-
-
-
-## Verificando la configuración del router de borde ***iborder-rtr***
-
-Uno de los tutores del Laboratorio mostrará la configuración del router de borde (contenido del archivo ***/etc/frr/frr.conf*** en el equipo **iborder-rtr**):
+One of the Lab tutors will show the border router configuration (contents of the ***/etc/frr/frr.conf*** file on the **iborder-rtr** machine):
 
 ```
 root@iborder-rtr:~# more /etc/frr/frr.conf
@@ -368,21 +182,21 @@ end
 
 
 
-Vemos que este router de borde tiene una sesión BGP establecida con un ISP del cual recibe la tabla global IPv4 e IPv6.
+We see that this border router has a BGP session established with an ISP from which it receives the global IPv4 and IPv6 table.
 
-También están pre-configuradas en este router de borde, sesiones BGP con cada uno de los router de borde de los grupos, a la espera de que estos configuren las sesiones BGP de su lado.
+BGP sessions with each of the group's border routers are also pre-configured in this border router, waiting for them to configure the BGP sessions on their side.
 
-Para evitar sobrecargar todos los routers de los grupos y el laboratorio en general, se aplicó un filtro que solamente permitirá a BGP poner algunos prefijos (correspondientes a ciertos ASNs) en las tablas BGP (tanto IPv4 como IPv6).
-
-
-
-> ***Finalmente notar que este router no posee ningún filtro de rutas basado en información RPKI; reenviando a los routers de borde de los grupos todos los prefijos permitidos en el filtro BGP por ASN mencionado anteriormente*** ***(al mismo tiempo, aceptando todo lo que los equipos envíen)***.
+To avoid overloading all the routers in the groups and the lab in general, a filter was applied that will only allow BGP to put some prefixes (corresponding to certain ASNs) in the BGP tables (both IPv4 and IPv6).
 
 
 
-## Verificando la configuración inicial de los routers de borde de los equipos
+> ***Finally note that this router does not have any route filter based on RPKI information; forwarding to the edge routers of the groups all the prefixes allowed in the BGP filter by ASN mentioned above*** ***(at the same time, accepting everything that the group routers send)***.
 
-Verificamos la configuración inicial del router de borde correspondiente a nuestro equipo (**grpX-rtr**):
+
+
+## Verifying the initial configuration of the edge routers of the groups
+
+We verify the initial configuration of the border router corresponding to our group (**grpX-rtr**):
 
 ```
 grpX-rtr# sh run
@@ -428,11 +242,85 @@ line vty
 end
 ```
 
-> En este punto es conveniente revisar nuevamente el diagrama de red correspondiente a cada grupo e identificar las interfaces ya configuradas en el router del equipo.
+> At this point it is convenient to review again the network diagram corresponding to each group and identify the interfaces already configured in the border router of the group.
 
 
 
-Ahora, modificamos la configuración del router correspondiente a nuestro equipo, para que resulte la siguiente (*el detalle de los pasos de configuración se encuentra más abajo*):
+#### We then add some route-maps and access lists that we will use later.
+
+> We will explain the following as we use them during practice
+>
+
+```
+ip prefix-list DENY-ALL-IPv4 seq 5 deny any
+ip prefix-list PERMIT-ALL-IPv4 seq 5 permit any
+!
+ipv6 prefix-list DENY-ALL-IPv6 seq 5 deny any
+ipv6 prefix-list PERMIT-ALL-IPv6 seq 5 permit any
+!
+route-map PERMIT-SOME-ASN permit 10
+ match as-path AS-PATH-PERMIT-LIST
+!
+route-map TODO-IPv6 permit 10
+ match ipv6 address prefix-list PERMIT-ALL-IPv6
+!
+route-map NADA-IPv6 permit 10
+ match ipv6 address prefix-list DENY-ALL-IPv6
+!
+route-map TODO-IPv4 permit 10
+ match ip address prefix-list PERMIT-ALL-IPv4
+!
+route-map NADA-IPv4 permit 10
+ match ipv6 address prefix-list DENY-ALL-IPv4
+!
+route-map RPKI permit 10
+ match rpki valid
+ set local-preference 200
+!
+route-map RPKI permit 20
+ match rpki notfound
+ set local-preference 100
+```
+
+
+
+#### We configure the BGP session with the border router (**iborder-rtr**)
+
+> Note that our autonomous system will be 650XX, changing the XX to our group number (01 for group 1, ... 12 for group 12, etc). So group 1 will have ASN 65001 and group 12 will have ASN 65012.
+>
+
+We configured 2 BGP sessions, one IPv4 and one IPv6.
+
+At this point, we will apply policies (***route-map***) in both sessions in order to ***allow all*** the prefixes received from the border router and publish to it all the ones we have in our BGP table (for this we use some of the previously created route-maps): ***route-map TODO-IPv4*** and ***route-map TODO-IPv6***.
+
+```
+router bgp 650XX
+ bgp router-id 100.64.1.X
+ bgp log-neighbor-changes
+ no bgp default ipv4-unicast
+ neighbor 100.64.0.10 remote-as 65000
+ neighbor 100.64.0.10 description iborder-rtr
+ neighbor fddf:b98d::10 remote-as 65000
+ neighbor fddf:b98d::10 description iborder-rtr
+ !
+ address-family ipv4 unicast
+  neighbor 100.64.0.10 activate
+  neighbor 100.64.0.10 soft-reconfiguration inbound
+  neighbor 100.64.0.10 route-map TODO-IPv4 in
+  neighbor 100.64.0.10 route-map TODO-IPv4 out
+ exit-address-family
+ !
+ address-family ipv6 unicast
+  neighbor fddf:b98d::10 activate
+  neighbor fddf:b98d::10 soft-reconfiguration inbound
+  neighbor fddf:b98d::10 route-map TODO-IPv6 in
+  neighbor fddf:b98d::10 route-map TODO-IPv6 out
+ exit-address-family
+```
+
+
+
+So, the configuration of the router corresponding to our equipment is as follows:
 
 ```
 grpX-rtr# sh run
@@ -443,11 +331,7 @@ Current configuration:
 frr version 8.0.1
 frr defaults traditional
 hostname grpX-rtr
-rpki
- rpki polling_period 300
- rpki cache 100.64.0.70 323 preference 1
- rpki cache 100.64.0.71 323 preference 2
- exit
+!
 service integrated-vtysh-config
 !
 ip route 0.0.0.0/0 100.64.0.1
@@ -537,81 +421,7 @@ end
 
 
 
-#### Agregamos entonces algunos route-map y listas de acceso que utilizaremos más tarde
-
-> Los siguientes los iremos explicando a medida que los utilicemos durante la práctica
->
-
-```
-ip prefix-list DENY-ALL-IPv4 seq 5 deny any
-ip prefix-list PERMIT-ALL-IPv4 seq 5 permit any
-!
-ipv6 prefix-list DENY-ALL-IPv6 seq 5 deny any
-ipv6 prefix-list PERMIT-ALL-IPv6 seq 5 permit any
-!
-route-map PERMIT-SOME-ASN permit 10
- match as-path AS-PATH-PERMIT-LIST
-!
-route-map TODO-IPv6 permit 10
- match ipv6 address prefix-list PERMIT-ALL-IPv6
-!
-route-map NADA-IPv6 permit 10
- match ipv6 address prefix-list DENY-ALL-IPv6
-!
-route-map TODO-IPv4 permit 10
- match ip address prefix-list PERMIT-ALL-IPv4
-!
-route-map NADA-IPv4 permit 10
- match ipv6 address prefix-list DENY-ALL-IPv4
-!
-route-map RPKI permit 10
- match rpki valid
- set local-preference 200
-!
-route-map RPKI permit 20
- match rpki notfound
- set local-preference 100
-```
-
-
-
-#### Configuramos la sesión BGP con el router de borde (**iborder-rtr**)
-
-> Observar que nuestro sistema autónomo será el 650XX cambiando la XX por nuestro número de grupo (01 para el grupo 1, ... 12 para el grupo 12, etc). De forma que el grupo 1 tendrá el ASN 65001 y el grupo 12 tendrá el ASN 65012.
->
-
-Configuramos 2 sesiones BGP, una IPv4 y otra IPv6.
-
-En este punto, aplicaremos políticas (***route-map***) en ambas sesiones de forma de ***permitir todos*** los prefijos recibidos del router de borde y publicar al mismo todos los que tengamos en nuestra tabla BGP (para ello utilizamos algunos de los route-map creados anteriormente): ***route-map TODO-IPv4*** y ***route-map TODO-IPv6***.
-
-```
-router bgp 650XX
- bgp router-id 100.64.1.X
- bgp log-neighbor-changes
- no bgp default ipv4-unicast
- neighbor 100.64.0.10 remote-as 65000
- neighbor 100.64.0.10 description iborder-rtr
- neighbor fddf:b98d::10 remote-as 65000
- neighbor fddf:b98d::10 description iborder-rtr
- !
- address-family ipv4 unicast
-  neighbor 100.64.0.10 activate
-  neighbor 100.64.0.10 soft-reconfiguration inbound
-  neighbor 100.64.0.10 route-map TODO-IPv4 in
-  neighbor 100.64.0.10 route-map TODO-IPv4 out
- exit-address-family
- !
- address-family ipv6 unicast
-  neighbor fddf:b98d::10 activate
-  neighbor fddf:b98d::10 soft-reconfiguration inbound
-  neighbor fddf:b98d::10 route-map TODO-IPv6 in
-  neighbor fddf:b98d::10 route-map TODO-IPv6 out
- exit-address-family
-```
-
-
-
-#### Visualizamos el estado de las sesiones BGP (IPv6)
+#### We visualize the state of the BGP sessions (IPv6)
 
 ```
 grpX-rtr# sh bgp ipv6 unicast summary 
@@ -628,7 +438,7 @@ Total number of neighbors 1
 
 
 
-#### Visualizamos el estado de la tabla BGP (IPv6)
+#### We visualize the state of the BGP table (IPv6)
 
 ```
 grpX-rtr# sh bgp ipv6 unicast
@@ -657,16 +467,203 @@ RPKI validation codes: V valid, I invalid, N Not found
 
 
 
-#### Agregamos la configuración para conectar el router con nuestro validador RPKI
 
-Para conectar el router al validador RPKI podemos utilizar la dirección IPv4 del validador o el nombre de dominio del mismo... en este caso utilizaremos las direcciones IPv4:
+
+
+
+# RPKI
+
+## Verifying the RPKI FORT validator configuration (*rpki1* & *rpki2*)
+
+One of the Lab's tutors will display the FORT validator configuration (content of the ***/etc/fort/config.json*** file on the **rpki1** or **rpki2** server):
+
+```
+root@rpki1:~# more /etc/fort/config.json 
+
+{
+	"tal": "/var/fort/tal",
+	"local-repository": "/var/fort/repository",
+	"rsync-strategy": "root",
+	"shuffle-uris": true,
+	"mode": "server",
+
+	"server": {
+		"port": "323",
+		"backlog": 100,
+		"interval": {
+	            "validation": 900,
+	            "refresh": 900,
+	            "retry": 600,
+	            "expire": 7200
+	        }
+	},
+
+	"log": {
+		"color-output": true,
+		"file-name-format": "file-name"
+	},
+
+	"rsync": {
+		"program": "rsync",
+		"arguments-recursive": [
+			"--recursive",
+			"--times",
+			"$REMOTE",
+			"$LOCAL"
+		],
+		"arguments-flat": [
+			"--times",
+			"--dirs",
+			"$REMOTE",
+			"$LOCAL"
+		]
+	},
+
+	"incidences": [
+		{
+			"name": "incid-hashalg-has-params",
+			"action": "ignore"
+		}
+	],
+
+	"output": {
+		"roa": "/var/fort/fort_roas.csv"
+	}
+}
+
+```
+
+
+
+The files corresponding to the TAL of each of the 5 RIRs are found in the directory ***/var/fort/tal/***:
+
+```
+root@rpki1:~# ls -larth /var/fort/tal/
+
+total 6.0K
+drwxr-xr-x 4 root root   5 Sep 24 00:36 ..
+-rw-r--r-- 1 root root 496 Sep 20 15:10 afrinic.tal
+-rw-r--r-- 1 root root 466 Sep 20 15:10 apnic.tal
+-rw-r--r-- 1 root root 487 Sep 20 15:10 arin.tal
+-rw-r--r-- 1 root root 502 Sep 20 15:10 lacnic.tal
+-rw-r--r-- 1 root root 482 Sep 20 15:10 ripe-ncc.tal
+drwxr-xr-x 2 root root   7 Sep 20 15:10 .
+```
+
+
+
+Now we will update the files with the TALs by downloading them again from the 5 RIRs, using the following command:
+
+```
+root@rpki1:~# fort --init-tals --tal /var/fort/tal
+```
+
+```
+Sep 27 18:11:44 DBG: HTTP GET: https://rpki.afrinic.net/tal/afrinic.tal
+Successfully fetched '/var/fort/tal/afrinic.tal'!
+
+Sep 27 18:11:45 DBG: HTTP GET: https://tal.apnic.net/apnic.tal
+Successfully fetched '/var/fort/tal/apnic.tal'!
+
+Attention: ARIN requires you to agree to their Relying Party Agreement (RPA) before you can download and use their TAL.
+Please download and read https://www.arin.net/resources/manage/rpki/rpa.pdf
+If you agree to the terms, type 'yes' and hit Enter: Sep 27 18:11:47 DBG: HTTP GET: https://www.arin.net/resources/manage/rpki/arin.tal
+Successfully fetched '/var/fort/tal/arin.tal'!
+
+Sep 27 18:11:47 DBG: HTTP GET: https://www.lacnic.net/innovaportal/file/4983/1/lacnic.tal
+Successfully fetched '/var/fort/tal/lacnic.tal'!
+
+Sep 27 18:11:48 DBG: HTTP GET: https://tal.rpki.ripe.net/ripe-ncc.tal
+Successfully fetched '/var/fort/tal/ripe-ncc.tal'!
+```
+
+
+
+We confirm (observing the date) that we do indeed have the current version of the TAL (in the directory ***/var/fort/tal/***):
+
+```
+root@rpki1:~# ls -larth /var/fort/tal/
+
+total 6.0K
+drwxr-xr-x 4 root root   5 Sep 24 00:36 ..
+-rw-r--r-- 1 root root 496 Sep 27 18:11 afrinic.tal
+-rw-r--r-- 1 root root 466 Sep 27 18:11 apnic.tal
+-rw-r--r-- 1 root root 487 Sep 27 18:11 arin.tal
+-rw-r--r-- 1 root root 502 Sep 27 18:11 lacnic.tal
+-rw-r--r-- 1 root root 482 Sep 27 18:11 ripe-ncc.tal
+drwxr-xr-x 2 root root   7 Sep 27 18:11 .
+```
+
+
+
+And we restart the FORT validator process (remember that the validator was installed and executed as a system daemon):
+
+```
+root@rpki1:~# systemctl restart fortd
+```
+
+```
+root@rpki1:~# systemctl status fortd
+
+● fortd.service - FORT service (fort) - FORT RPKI validator
+     Loaded: loaded (/lib/systemd/system/fortd.service; enabled; vendor preset: enabled)
+    Drop-In: /run/systemd/system/service.d
+             └─zzz-lxc-service.conf
+     Active: active (running) since Mon 2021-09-27 18:15:10 UTC; 7s ago
+   Main PID: 1956 (fort)
+      Tasks: 37 (limit: 19204)
+     Memory: 13.2M
+     CGroup: /system.slice/fortd.service
+             └─1956 /usr/local/bin/fort --configuration-file=/etc/fort/config.json
+
+Sep 27 18:15:10 rpki1.lac.te-labs.training systemd[1]: Started FORT service (fort) - FORT RPKI validator.
+Sep 27 18:15:10 rpki1.lac.te-labs.training fort[1956]: INF: Disabling validation logging on syslog.
+Sep 27 18:15:10 rpki1.lac.te-labs.training fort[1956]: INF: Disabling validation logging on standard streams.
+Sep 27 18:15:10 rpki1.lac.te-labs.training fort[1956]: INF: Console log output configured; disabling operation logging on syslog.
+Sep 27 18:15:10 rpki1.lac.te-labs.training fort[1956]: INF: (Operation Logs will be sent to the standard streams only.)
+```
+
+
+
+Viewing the log of the **fortd** daemon (***/var/log/fortd.log***) we see that it started the first validation cycle (after the restart), so we must wait for this first cycle to complete to be able to use the validator:
+
+```
+root@rpki1:~# tail -f /var/log/fortd.log
+
+/usr/local/bin/fort(+0x3577a)[0x55c4aa92077a]
+/usr/local/bin/fort(+0x362a1)[0x55c4aa9212a1]
+/usr/local/bin/fort(+0x45fbc)[0x55c4aa930fbc]
+/lib/x86_64-linux-gnu/libpthread.so.0(+0x9609)[0x7fc904e47609]
+/lib/x86_64-linux-gnu/libc.so.6(clone+0x43)[0x7fc904d6e293]
+Sep 27 18:15:10 INF: Disabling validation logging on syslog.
+Sep 27 18:15:10 INF: Disabling validation logging on standard streams.
+Sep 27 18:15:10 INF: Console log output configured; disabling operation logging on syslog.
+Sep 27 18:15:10 INF: (Operation Logs will be sent to the standard streams only.)
+Sep 27 18:15:10 WRN: First validation cycle has begun, wait until the next notification to connect your router(s)
+```
+
+
+
+Once the cycle is finished, the following message will appear in the log (***/var/log/fortd.log***):
+
+```
+Sep 27 18:18:13 WRN: First validation cycle successfully ended, now you can connect your router(s)
+```
+
+> Note that it takes a few minutes for the validator to complete the first validation cycle.
+
+
+
+#### We add the configuration to connect the router with our RPKI validator
+
+To connect the router to the RPKI validator we can use the validator's IPv4 address or its domain name... in this case we will use the IPv4 addresses:
 
 **rpki1**:  *100.64.0.70*
 **rpki2**:  *100.64.0.70*
 
-Y el puerto TCP que configuramos en los servidores, en nuestro caso ambos en el puerto 323.
+And the TCP port that we configure on the servers, in our case both on port 323.
 
-Finalmente también debemos indicar la preferencia de cada servidor de forma que nuestro router intentará primero con el que tenga menor preferencia.
+Finally, we must also indicate the preference of each server so that our router will try the one with the lower preference first.
 
 ```
 rpki
@@ -677,11 +674,11 @@ rpki
 
 
 
-En este punto, ya tenemos completamente configurado nuestro router de borde y podemos comenzar a visualizar algunos detalles y ensayar diferentes escenarios.
+At this point, we have our edge router fully configured and can start to visualize some details and test different scenarios.
 
 
 
-#### Visualización de la configuración del validador RPKI
+#### Viewing the RPKI Validator Configuration
 
 ```
 grpX-rtr# sh rpki cache-connection 
@@ -691,7 +688,7 @@ rpki tcp cache 100.64.0.70 323 pref 1
 
 
 
-#### Visualización del estado de validación de un prefijo en particular
+#### Viewing the validation status of a particular prefix
 
 ```
 grpX-rtr# sh rpki prefix 2803:9910:8000::/48
@@ -701,7 +698,7 @@ Prefix                                   Prefix Length  Origin-AS
 
 
 
-#### Visualizamos el estado de la tabla BGP (IPv6)
+#### We visualize the state of the BGP table (IPv6)
 
 ```
 grpX-rtr# sh bgp ipv6 unicast
@@ -735,9 +732,9 @@ V*> 2001:7fb:fe04::/48
 
 
 
-## Analysis de un prefijo particular a modo de demostración
+## Analysis of a particular prefix as a demonstration
 
-Visualizamos el prefijo ***2803:9910:8000::1*** en la tabla BGP
+We visualize the prefix ***2803:9910:8000::1*** in the BGP table
 
 ```
 grpX-rtr# sh bgp ipv6 unicast 2803:9910:8000::1
@@ -752,12 +749,12 @@ Paths: (1 available, best #1, table default)
       Last update: Tue Apr 26 23:21:23 2022
 ```
 
-* ***¿Qué sucede con el estado de validación?***
-* ***¿Que ASN origina el prefijo?***
+* ***What happens to the validation status?***
+* ***What ASN originates the prefix?***
 
 
 
-Accedemos al cliente y realizamos un mtr (traceroute) al mismo prefijo (***2803:9910:8000::1***) y lo dejamos ejecutando
+We access the client and perform an mtr (traceroute) to the same prefix (***2803:9910:8000::1***) and leave it running
 
 ```
 root@cli:~# mtr 2803:9910:8000::1
@@ -789,12 +786,12 @@ Keys:  Help   Display mode   Restart statistics   Order of fields   quit
 
 
 
-Ahora aguardamos a que los instructores realicen unas modificaciones... observando que sucede con el MTR.
+Now we wait for the instructors to make some modifications... watching what happens with the MTR.
 
-> Discusión
+> Discusion
 
-- ***¿Qué se observa?***
-- Intente refrescar el mtr (*presionando la letra "r"*)
+- ***What is observed?***
+- Try to refresh the mtr (*by pressing the letter "r"*)
 
 ```
 cli.grpX.lac.te-labs.training (fddf:b98d:X::2)                 2021-10-04T22:25:36+0000
@@ -808,7 +805,7 @@ Keys:  Help   Display mode   Restart statistics   Order of fields   quit
 
 
 
-Visualizamos el prefijo en nuestra tabla BGP
+We visualize the prefix in our BGP table
 
 ```
 grpX-rtr# sh bgp ipv6 unicast 2803:9910:8000::1
@@ -825,16 +822,30 @@ Paths: (1 available, best #1, table default)
 
 
 
-* ***¿Qué sucede con el estado de validación?***
-* ***¿Que ASN origina el prefijo?***
-* ***¿Qué sucedió?***
-* Entonces, si el estado es Invalido y tengo activado RPKI, ***¿por qué sigo viendo el prefijo en mi tabla BGP?***.
+* ***What happens to the validation status?***
+* ***What ASN originates the prefix?***
+* ***What happened?***
+* So if the status is Invalid and I have RPKI enabled, ***why am I still seeing the prefix in my BGP table?***.
 
 
 
-### Configurando filtros BGP basados en el estado de validación
+### We now add some route-maps and access-lists that we will use to perform actions based on the RPKI validation state.
 
-Aplicamos el filtro "RPKI" que solo instalará en la tabla BGP los prefijos con estado "valid" o "not found" (descartando los "invalid")
+```
+route-map RPKI permit 10
+ match rpki valid
+ set local-preference 200
+!
+route-map RPKI permit 20
+ match rpki notfound
+ set local-preference 100
+```
+
+
+
+### Configuring BGP filters based on validation state
+
+We apply the "RPKI" filter that will only install in the BGP table the prefixes with "valid" or "not found" status (discarding the "invalid" ones)
 
 ```
 grpX-rtr# conf t
@@ -845,7 +856,7 @@ grpX-rtr(config-router-af)# neighbor fddf:b98d::10 route-map RPKI in
 
 
 
-Visualizamos el prefijo en nuestra tabla BGP
+We visualize the prefix in our BGP table
 
 ```
 grpX-rtr# sh bgp ipv6 unicast 2803:9910:8000::1
@@ -862,13 +873,13 @@ Paths: (1 available, best #1, table default)
 
 
 
-* ***¿Qué sucede con el estado de validación?***
-* ***¿Que ASN origina el prefijo?***
-* ***¿Qué sucedió?***
+* ***What happens to the validation status?***
+* ***What ASN originates the prefix?***
+* ***What happened?***
 
 
 
-En el cliente visualizamos nuevamente el MTR, intente refrescarlo (presionando la letra "r")
+In the client we display the MTR again, try to refresh it (by pressing the letter "r")
 
 ```
 cli.grpX.lac.te-labs.training (fddf:b98d:X::2)                 2021-10-04T22:50:51+0000
@@ -881,19 +892,19 @@ Keys:  Help   Display mode   Restart statistics   Order of fields   quit
 
 ```
 
-* ***¿Qué sucede? ¿Cómo lo explica?***
+* ***What's going on? How do you explain it?***
 
-  (Tip: recordar la topología de red y quien provee la conectividad a Internet)
-
-
-
-### Los tutores procederán a habilitar filtros RPKI similares en el router iborder-rtr (ANS 65000)
-
-Los tutores aplican el filtro RPKI en el router de borde.
+  (Tip: remember the network topology and who provides Internet connectivity)
 
 
 
-Accedemos al cliente y visualizamos lo que sucede. Intente refrescarlo (presionando la letra "r")
+### The tutors will proceed to enable similar RPKI filters in the iborder-rtr router (ANS 65000)
+
+Instructors apply the RPKI filter at the border router.
+
+
+
+We access the client and visualize what happens. Try to refresh it (by pressing the letter "r")
 
 ```
 cli.grpX.lac.te-labs.training (fddf:b98d:X::2)                 2021-10-04T23:09:10+0000
@@ -923,9 +934,9 @@ Keys:  Help   Display mode   Restart statistics   Order of fields   quit
 
 
 
-***¿Conclusiones?***
+***Conclusions?***
 
-> Discutir como se resolvió el secuestro de rutas en este caso.
+> Discuss how route hijacking was resolved in this case.
 
 
 

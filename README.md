@@ -8,3 +8,9 @@ ISP Operations Labs
 * DNS Resolver Lab
 * Authoritative DNS for reverse resolution showcase
 
+
+
+## Other resources
+
+* [RPKI FORT validator installation, setup and configuration guide](https://github.com/LACNOG/rpki-labs/blob/main/lab-setup/RPKI_validator_FORT.md)
+

@@ -1,8 +1,8 @@
-# BGP and Secure Routing Lab
+# BGP and Secure Routing Lab (using FRR)
 
 ------
 
-> (2023-02-01)
+> (2023-02-15)
 
 ------
 

@@ -19,17 +19,17 @@
 ```
   DEVICE NAME        IPv4 ADDRESS              IPv6 ADDRESS
 +--------------+-----------------------+-----------------------------+
-| grpX-cli     | 100.100.X.2 (eth0)    | fd89:59e0:X::2 (eth0)       |
+| grpX-cli     | 100.100.X.2 (eth0)    | fd52:a627:X::2 (eth0)       |
 +--------------+-----------------------+-----------------------------+
-| grpX-resolv1 | 100.100.X.67 (eth0)   | fd89:59e0:X:64::67 (eth0)   |
+| grpX-resolv1 | 100.100.X.67 (eth0)   | fd52:a627:X:64::67 (eth0)   |
 +--------------+-----------------------+-----------------------------+
-| grpX-resolv2 | 100.100.X.68 (eth0)   | fd89:59e0:X:64::68 (eth0)   |
+| grpX-resolv2 | 100.100.X.68 (eth0)   | fd52:a627:X:64::68 (eth0)   |
 +--------------+-----------------------+-----------------------------+
-| grpX-rtr     | 100.64.1.X (eth0)     | fd89:59e0:X::1 (eth1)       |
-|              | 100.100.X.65 (eth2)   | fd89:59e0:X:64::1 (eth2)    |
-|              | 100.100.X.193 (eth4)  | fd89:59e0:X:192::1 (eth4)   |
-|              | 100.100.X.129 (eth3)  | fd89:59e0:X:128::1 (eth3)   |
-|              | 100.100.X.1 (eth1)    | fd89:59e0:0:1::X (eth0)     |
+| grpX-rtr     | 100.64.1.X (eth0)     | fd52:a627:X::1 (eth1)       |
+|              | 100.100.X.65 (eth2)   | fd52:a627:X:64::1 (eth2)    |
+|              | 100.100.X.193 (eth4)  | fd52:a627:X:192::1 (eth4)   |
+|              | 100.100.X.129 (eth3)  | fd52:a627:X:128::1 (eth3)   |
+|              | 100.100.X.1 (eth1)    | fd52:a627:0:1::X (eth0)     |
 +--------------+-----------------------+-----------------------------+
 ```
 
@@ -93,7 +93,7 @@ options {
 	listen-on port 53 { any; };																		<--- Add this
 	listen-on-v6 port 53 { any; };																<--- Add this
 	
-	allow-query { localhost; 100.100.0.0/16; fd89:59e0::/32; };		<--- Add this
+	allow-query { localhost; 100.100.0.0/16; fd52:a627::/32; };		<--- Add this
 
 	recursion yes;																								<--- Add this
 };
@@ -192,7 +192,7 @@ server:
 
         access-control: 127.0.0.0/8 allow
         access-control: 100.100.0.0/16 allow
-        access-control: fd89:59e0::/32 allow
+        access-control: fd52:a627::/32 allow
 
         port: 53
 

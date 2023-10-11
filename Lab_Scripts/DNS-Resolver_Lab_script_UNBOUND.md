@@ -1,4 +1,4 @@
-# DNS Resolver Lab (using BIND & Unbound)
+# DNS Resolver Lab (using UNBOUND)
 
 ------
 

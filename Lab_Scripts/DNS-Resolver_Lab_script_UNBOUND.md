@@ -120,6 +120,8 @@ And we check the status of the UNBOUND process:
 # systemctl status unbound
 ```
 
+
+
 We should obtain an output similar to the following:
 
 ```

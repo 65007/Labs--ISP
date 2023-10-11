@@ -90,12 +90,12 @@ options {
 	//========================================================================
 	dnssec-validation auto;
 
-	listen-on port 53 { any; };																		<--- Add this
-	listen-on-v6 port 53 { any; };																<--- Add this
+	listen-on port 53 { any; };
+	listen-on-v6 port 53 { any; };
 	
-	allow-query { localhost; 100.100.0.0/16; fd52:a627::/32; };		<--- Add this
+	allow-query { localhost; 100.100.0.0/16; fd52:a627::/32; };
 
-	recursion yes;																								<--- Add this
+	recursion yes;
 };
 ```
 

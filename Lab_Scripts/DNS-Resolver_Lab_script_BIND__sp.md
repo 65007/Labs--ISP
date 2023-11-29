@@ -2,7 +2,7 @@
 
 
 
-![lab-topo-resolver-authoritative](./_image/grpX_network_topology.png)
+![lab-topo-resolver-authoritative](./DNS-Resolver_Lab_script-pics/grpX_network_topology.png)
 
 
 
@@ -415,5 +415,4 @@ Ahora volvemos a realizar la consulta, luego de ingresar la excepción:
 ```
 
 ***¿Qué sucede?***
-
 

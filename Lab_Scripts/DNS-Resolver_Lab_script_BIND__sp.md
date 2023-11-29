@@ -115,7 +115,7 @@ Y comprobamos el estado del proceso bind9:
 Deberíamos obtener una salida similar a la siguiente:
 
 ```
-● named.service - BIND Domain Name Server
+* named.service - BIND Domain Name Server
    Loaded: loaded (/lib/systemd/system/named.service; enabled; vendor preset: enabled)
   Drop-In: /etc/systemd/system/service.d
        └─lxc.conf

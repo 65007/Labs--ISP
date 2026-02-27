@@ -5,8 +5,8 @@ ISP Operations Labs
 
 * [BGP and Secure Routing Lab](https://github.com/65007/Labs--ISP/blob/main/Lab_Scripts/BGP_RPKI_FRR_Lab_script.md)
 
-* [DNS Resolver Lab (BIND)](https://github.com/65007/Labs--ISP/blob/main/Lab_Scripts/DNS-Resolver_Lab_script_BIND.md)
-* [DNS Resolver Lab (Unbound)](https://github.com/65007/Labs--ISP/blob/main/Lab_Scripts/DNS-Resolver_Lab_script_UNBOUND.md)
+* [DNS Resolver Lab (BIND)](https://github.com/65007/Labs--DNS/dns-resolvers/DNS-Resolver_Lab_script_BIND.md)
+* [DNS Resolver Lab (Unbound)](https://github.com/65007/Labs--DNS/dns-resolvers/Lab_Scripts/DNS-Resolver_Lab_script_UNBOUND.md)
 * Authoritative DNS for reverse resolution showcase
 
 
